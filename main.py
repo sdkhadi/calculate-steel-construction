@@ -18,29 +18,26 @@ connector = sqlite3.connect('ConstructionSteel.db')
 cursor = connector.cursor()
 
 connector.execute(
-"CREATE TABLE IF NOT EXISTS CONSTRUCTION_STEEL (STEEL_ID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, PROYEK_NAME TEXT, RATIO FLOAT, ZX FLOAT, H FLOAT, B FLOAT, RATIO_LENTUR TEXT, RATIO GESER TEXT, RATIO_STABILITAS_TEKUK TEXT, STABILITAS_PENAMPANG TEXT)"
+"CREATE TABLE IF NOT EXISTS CONSTRUCTION_STEEL (STEEL_ID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, PROYEK_NAME TEXT, RATIO FLOAT, ZX FLOAT, H FLOAT, B FLOAT, RATIO_LENTUR TEXT, RATIO_GESER TEXT, RATIO_STABILITAS_TEKUK TEXT, STABILITAS_PENAMPANG TEXT)"
 )
 
 # Creating the functions
 def reset_fields():
-    global name_strvar, email_strvar, contact_strvar, gender_strvar, dob, stream_strvar
+    global proyek_name,panjang,modulus_elastisitas,kekuatan_min_baja,kekuatan_max_baja,ketinggian_gedung,beban_terbagi_rata,beban_terpusat,radius,koefisien_b,koefisien_geser,faktor_distribusi_vertikal
 
-    for i in ['name_strvar', 'email_strvar', 'contact_strvar', 'gender_strvar', 'stream_strvar']:
+    for i in ['proyek_name', 'panjang', 'modulus_elastisitas', 'kekuatan_min_baja', 'kekuatan_max_baja','ketinggian_gedung','beban_terbagi_rata','beban_terpusat','radius','koefisien_b','koefisien_geser','faktor_distribusi_vertikal']:
         exec(f"{i}.set('')")
-    dob.set_date(datetime.datetime.now().date())
-
 
 def reset_form():
-    global tree
-    tree.delete(*tree.get_children())
-
-    reset_fields()
+    curr = connector.execute('DELETE FROM CONSTRUCTION_STEEL')
+    connector.commit()
+    display_records()
 
 
 def display_records():
     tree.delete(*tree.get_children())
 
-    curr = connector.execute('SELECT * FROM SCHOOL_MANAGEMENT')
+    curr = connector.execute('SELECT * FROM CONSTRUCTION_STEEL')
     data = curr.fetchall()
 
     for records in data:
@@ -68,8 +65,11 @@ def add_record():
         mb.showerror('Error!', "Semua Field Wajib Diisi")
     else:
         try:
+            # connector.execute(
+            # 'INSERT INTO CONSTRUCTION_STEEL(PROYEK_NAME,RATIO,ZX,H,B,RATIO_LENTUR,RATIO_GESER,RATIO_STABILITAS_TEKUK,STABILITAS_PENAMPANG) VALUES (?,?,?,?,?,?,?,?,?)', (varProyekName,ratio, Zx, H, B, ratio_lentur, ratio_geser,ratio_stabilitas_tekuk,stabilitas_penampang)
+            # )
             connector.execute(
-            'INSERT INTO CONSTRUCTION_STEEL (PROYEK_NAME,RATIO,ZX,H,B,RATIO_LENTUR,RATIO GESER,RATIO_STABILITAS_TEKUK,STABILITAS_PENAMPANG) VALUES (?,?,?,?,?,?,?,?,?)', (varProyekName,ratio, Zx, H, B, ratio_lentur, ratio_geser,ratio_stabilitas_tekuk,stabilitas_penampang)
+            'INSERT INTO CONSTRUCTION_STEEL(PROYEK_NAME,RATIO,ZX,H,B,RATIO_LENTUR,RATIO_GESER,RATIO_STABILITAS_TEKUK,STABILITAS_PENAMPANG) VALUES (?,?,?,?,?,?,?,?,?)', ("Proyek A",291, 2729, 20, 10, "OK", "OK","TIDAK OK","OK")
             )
             connector.commit()
             mb.showinfo('Record added', f"Record of {varProyekName} was successfully added")
@@ -81,7 +81,7 @@ def add_record():
 
 def remove_record():
     if not tree.selection():
-        mb.showerror('Error!', 'Please select an item from the database')
+        mb.showerror('Error!', 'Silahkan klik pada salah satu list untuk menghapus')
     else:
         current_item = tree.focus()
         values = tree.item(current_item)
@@ -89,33 +89,33 @@ def remove_record():
 
         tree.delete(current_item)
 
-        connector.execute('DELETE FROM SCHOOL_MANAGEMENT WHERE STUDENT_ID=%d' % selection[0])
+        connector.execute('DELETE FROM CONSTRUCTION_STEEL WHERE STEEL_ID=%d' % selection[0])
         connector.commit()
 
-        mb.showinfo('Done', 'The record you wanted deleted was successfully deleted.')
+        mb.showinfo('Done', 'Berhasil Menghapus Data')
 
         display_records()
 
 
 def view_record():
-    global name_strvar, email_strvar, contact_strvar, gender_strvar, dob, stream_strvar
+    global proyek_name, Zx,H,B,ratio,ratio_lentur,ratio_geser,ratio_stabilitas_tekuk,stabilitas_penampang
 
     current_item = tree.focus()
     values = tree.item(current_item)
     selection = values["values"]
 
-    date = datetime.date(int(selection[5][:4]), int(selection[5][5:7]), int(selection[5][8:]))
-
-    name_strvar.set(selection[1]); email_strvar.set(selection[2])
-    contact_strvar.set(selection[3]); gender_strvar.set(selection[4])
-    dob.set_date(date); stream_strvar.set(selection[6])
+    proyek_name.set(selection[1]); ratio.set(selection[2])
+    Zx.set(selection[3]); H.set(selection[4])
+    B.set(selection[5]); ratio_lentur.set(selection[6])
+    ratio_geser.set(selection[7]); ratio_stabilitas_tekuk.set(selection[8])
+    stabilitas_penampang.set(selection[9])
 
 
 # Initializing the GUI window
 main = Tk()
-main.title('My Project')
-main.geometry('1280x1280')
-main.resizable(True, True)
+main.title('My Python Project')
+main.geometry('1280x720')
+main.resizable(False, True)
 
 
 
@@ -169,7 +169,7 @@ danger_frame = Frame(main, bg=primaryBg)
 center_frame.place(relx=0.18, y=25, relheight=1, relwidth=0.20)
 
 right_frame = Frame(main, bg=primaryBg)
-right_frame.place(relx=0.35, y=25, relheight=1, relwidth=0.9)
+right_frame.place(relx=0.35, y=25, relheight=1, relwidth=0.65)
 
 # Placing components in the left frame
 Label(left_frame, text="Nama Proyek", font=labelfont, bg=lf_bg,fg=white).place(relx=0.07, rely=0.01)
@@ -214,16 +214,16 @@ Entry(center_frame, width=25, textvariable=faktor_distribusi_vertikal, font=entr
 Button(left_frame, text='Submit and Analyze', font=labelfont, command=add_record, width=16).place(relx=0.07, rely=0.65)
 
 # Placing components in the center frame
-Button(center_frame, text='Delete Record', font=labelfont, fg="#c62828", command=remove_record, width=16).place(relx=0.07, rely=0.75)
-Button(left_frame, text='View Record', font=labelfont, command=view_record, width=16).place(relx=0.07, rely=0.75)
-Button(left_frame, text='Reset Fields', font=labelfont, command=reset_fields, width=16).place(relx=0.07, rely=0.80)
-Button(center_frame, text='Delete database', font=labelfont,fg="#c62828", command=reset_form, width=16).place(relx=0.07, rely=0.80)
+Button(left_frame, text='Delete Record', font=labelfont, fg="#c62828", command=remove_record, width=16).place(relx=0.07, rely=0.75)
+# Button(left_frame, text='View Record', font=labelfont, command=view_record, width=16).place(relx=0.07, rely=0.75)
+Button(center_frame, text='Reset Fields', font=labelfont, command=reset_fields, width=16).place(relx=0.07, rely=0.65)
+Button(center_frame, text='Delete All Data', font=labelfont,fg="#c62828", command=reset_form, width=16).place(relx=0.07, rely=0.75)
 
 # Placing components in the right frame
 Label(right_frame, text='Riwayat Hasil Analisa', font=headlabelfont, bg='Grey35', fg=white).pack(side=TOP, fill=X)
 
 tree = ttk.Treeview(right_frame, height=100, selectmode=BROWSE,
-                    columns=('project_name', "ratio", "Zx", "H", "B", "r_lentur", "r_geser","r_stabilitas_tekuk","r_stabilitas_penampang"))
+                    columns=('STEEL_ID','project_name', "ratio", "Zx", "H", "B", "r_lentur", "r_geser","r_stabilitas_tekuk","r_stabilitas_penampang"))
 
 X_scroller = Scrollbar(tree, orient=HORIZONTAL, command=tree.xview)
 Y_scroller = Scrollbar(tree, orient=VERTICAL, command=tree.yview)
@@ -232,6 +232,7 @@ X_scroller.pack(side=BOTTOM, fill=X)
 Y_scroller.pack(side=RIGHT, fill=Y)
 
 tree.config(yscrollcommand=Y_scroller.set, xscrollcommand=X_scroller.set)
+tree.heading('STEEL_ID', text='ID', anchor=CENTER)
 
 tree.heading('project_name', text='Nama Proyek', anchor=CENTER)
 tree.heading('ratio', text='Ratio', anchor=CENTER)
@@ -245,16 +246,18 @@ tree.heading('r_stabilitas_penampang', text='Stabilitas Penampang ', anchor=CENT
 
 
 
-tree.column('#0', width=0, stretch=NO)
-tree.column('#1', width=100, stretch=NO)
-tree.column('#2', width=60, stretch=NO)
-tree.column('#3', width=60, stretch=NO)
-tree.column('#4', width=60, stretch=NO)
-tree.column('#5', width=60, stretch=NO)
-tree.column('#6', width=100, stretch=NO)
-tree.column('#7', width=100, stretch=NO)
-tree.column('#8', width=150, stretch=NO)
-tree.column('#9', width=150, stretch=NO)
+tree.column('#0', width=0, stretch=NO,anchor=CENTER)
+tree.column('#1', width=20, stretch=NO,anchor=CENTER)
+tree.column('#2', width=150, stretch=NO,anchor=CENTER)
+tree.column('#3', width=60, stretch=NO,anchor=CENTER)
+tree.column('#4', width=60, stretch=NO,anchor=CENTER)
+tree.column('#5', width=60, stretch=NO,anchor=CENTER)
+tree.column('#6', width=55, stretch=NO,anchor=CENTER)
+tree.column('#7', width=75, stretch=NO,anchor=CENTER)
+tree.column('#8', width=80, stretch=NO,anchor=CENTER)
+tree.column('#9', width=140, stretch=NO,anchor=CENTER)
+tree.column('#10', width=120, stretch=NO,anchor=CENTER)
+
 
 
 
