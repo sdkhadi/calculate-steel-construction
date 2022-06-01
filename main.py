@@ -1,17 +1,20 @@
-import datetime
-from logging import PlaceHolder
-from operator import mod
 from tkinter import *
 import tkinter.messagebox as mb
 from tkinter import ttk
-from turtle import color
-from tkcalendar import DateEntry  # pip install tkcalendar
 import sqlite3
+import json
+import numpy as np
+import math
+
+
+
+
 
 # Creating the universal font variables
 headlabelfont = ("Noto Sans CJK TC", 15, 'bold')
 labelfont = ('Garamond', 14)
 entryfont = ('Garamond', 12)
+
 
 # Connecting to the Database where all information will be stored
 connector = sqlite3.connect('ConstructionSteel.db')
@@ -29,7 +32,7 @@ def reset_fields():
         exec(f"{i}.set('')")
 
 def reset_form():
-    curr = connector.execute('DELETE FROM CONSTRUCTION_STEEL')
+    connector.execute('DELETE FROM CONSTRUCTION_STEEL')
     connector.commit()
     display_records()
 
@@ -42,7 +45,6 @@ def display_records():
 
     for records in data:
         tree.insert('', END, values=records)
-
 
 def add_record():
     global proyek_name,panjang,modulus_elastisitas,kekuatan_min_baja,kekuatan_max_baja,ketinggian_gedung,beban_terbagi_rata,beban_terpusat,radius,koefisien_b,koefisien_geser,faktor_distribusi_vertikal
@@ -96,19 +98,32 @@ def remove_record():
 
         display_records()
 
+def getMmax(pu,L,qu):
+    Mmax =  (0.25*pu*L)+(0.125*qu*pow(L,2))
+    return Mmax
 
-def view_record():
-    global proyek_name, Zx,H,B,ratio,ratio_lentur,ratio_geser,ratio_stabilitas_tekuk,stabilitas_penampang
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return array[idx]
 
-    current_item = tree.focus()
-    values = tree.item(current_item)
-    selection = values["values"]
+def getZx(FY,Øb):
+    
+    Mmax = getMmax(beban_terpusat,panjang,beban_terbagi_rata)
+    Zxperlu = Mmax / (FY * Øb )
+    # search Zx from table
+    # Opening JSON file
+    tableIWF = open('iwf.json')
+    data = json.load(tableIWF)
+    array = []
+    for i in data['IWF']:
+        res = i['Zx']
+        array.append(res)
+        
+    tableIWF.close()
+    getFixZx = find_nearest(array,Zxperlu)
+    return getFixZx
 
-    proyek_name.set(selection[1]); ratio.set(selection[2])
-    Zx.set(selection[3]); H.set(selection[4])
-    B.set(selection[5]); ratio_lentur.set(selection[6])
-    ratio_geser.set(selection[7]); ratio_stabilitas_tekuk.set(selection[8])
-    stabilitas_penampang.set(selection[9])
 
 
 # Initializing the GUI window
@@ -126,13 +141,6 @@ primaryBg = "Gray35"
 white ="#ffffff"
 
 # Creating the StringVar or IntVar variables
-name_strvar = StringVar()
-email_strvar = IntVar()
-contact_strvar = IntVar()
-gender_strvar = IntVar()
-fu = IntVar()
-stream_strvar = IntVar()
-
 proyek_name = StringVar()
 panjang = DoubleVar()
 modulus_elastisitas = DoubleVar()
@@ -164,9 +172,8 @@ left_frame = Frame(main, bg=primaryBg)
 left_frame.place(x=0, y=25, relheight=1, relwidth=0.20)
 
 center_frame = Frame(main, bg=primaryBg)
-danger_frame = Frame(main, bg=primaryBg)
 
-center_frame.place(relx=0.18, y=25, relheight=1, relwidth=0.20)
+center_frame.place(relx=0.18, y=25, relheight=1, relwidth=0.25)
 
 right_frame = Frame(main, bg=primaryBg)
 right_frame.place(relx=0.35, y=25, relheight=1, relwidth=0.65)
@@ -215,7 +222,6 @@ Button(left_frame, text='Submit and Analyze', font=labelfont, command=add_record
 
 # Placing components in the center frame
 Button(left_frame, text='Delete Record', font=labelfont, fg="#c62828", command=remove_record, width=16).place(relx=0.07, rely=0.75)
-# Button(left_frame, text='View Record', font=labelfont, command=view_record, width=16).place(relx=0.07, rely=0.75)
 Button(center_frame, text='Reset Fields', font=labelfont, command=reset_fields, width=16).place(relx=0.07, rely=0.65)
 Button(center_frame, text='Delete All Data', font=labelfont,fg="#c62828", command=reset_form, width=16).place(relx=0.07, rely=0.75)
 
@@ -257,11 +263,6 @@ tree.column('#7', width=75, stretch=NO,anchor=CENTER)
 tree.column('#8', width=80, stretch=NO,anchor=CENTER)
 tree.column('#9', width=140, stretch=NO,anchor=CENTER)
 tree.column('#10', width=120, stretch=NO,anchor=CENTER)
-
-
-
-
-
 
 tree.place(y=30, relwidth=1, relheight=0.9, relx=0)
 
