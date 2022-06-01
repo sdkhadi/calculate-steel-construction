@@ -8,7 +8,8 @@ import math
 
 
 
-
+tableIWF = open('iwf.json')
+data = json.load(tableIWF)
 
 # Creating the universal font variables
 headlabelfont = ("Noto Sans CJK TC", 15, 'bold')
@@ -21,7 +22,7 @@ connector = sqlite3.connect('ConstructionSteel.db')
 cursor = connector.cursor()
 
 connector.execute(
-"CREATE TABLE IF NOT EXISTS CONSTRUCTION_STEEL (STEEL_ID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, PROYEK_NAME TEXT, RATIO FLOAT, ZX FLOAT, H FLOAT, B FLOAT, RATIO_LENTUR TEXT, RATIO_GESER TEXT, RATIO_STABILITAS_TEKUK TEXT, STABILITAS_PENAMPANG TEXT)"
+"CREATE TABLE IF NOT EXISTS CONSTRUCTION_STEEL (STEEL_ID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, PROYEK_NAME TEXT, RATIO FLOAT, ZX FLOAT, H FLOAT, B FLOAT, RATIO_LENTUR TEXT, RATIO_GESER TEXT, RATIO_STABILITAS_TEKUK TEXT, STABILITAS_PENAMPANG_FLENGE TEXT,STABILITAS_PENAMPANG_WEB TEXT )"
 )
 
 # Creating the functions
@@ -48,7 +49,7 @@ def display_records():
 
 def add_record():
     global proyek_name,panjang,modulus_elastisitas,kekuatan_min_baja,kekuatan_max_baja,ketinggian_gedung,beban_terbagi_rata,beban_terpusat,radius,koefisien_b,koefisien_geser,faktor_distribusi_vertikal
-    global Zx,H,B,ratio,ratio_lentur,ratio_geser,ratio_stabilitas_tekuk,stabilitas_penampang
+    global Zx,H,B,ratio,ratio_lentur,ratio_geser,ratio_stabilitas_tekuk,stabilitas_penampang_flenge,stabilitas_penampang_web
 
     varProyekName = proyek_name.get()
     varPanjang = panjang.get()
@@ -68,10 +69,10 @@ def add_record():
     else:
         try:
             # connector.execute(
-            # 'INSERT INTO CONSTRUCTION_STEEL(PROYEK_NAME,RATIO,ZX,H,B,RATIO_LENTUR,RATIO_GESER,RATIO_STABILITAS_TEKUK,STABILITAS_PENAMPANG) VALUES (?,?,?,?,?,?,?,?,?)', (varProyekName,ratio, Zx, H, B, ratio_lentur, ratio_geser,ratio_stabilitas_tekuk,stabilitas_penampang)
+            # 'INSERT INTO CONSTRUCTION_STEEL(PROYEK_NAME,RATIO,ZX,H,B,RATIO_LENTUR,RATIO_GESER,RATIO_STABILITAS_TEKUK,STABILITAS_PENAMPANG_FLENGE,STABILITAS_PENAMPANG_WEB) VALUES (?,?,?,?,?,?,?,?,?,?)', (varProyekName,ratio, Zx, H, B, ratio_lentur, ratio_geser,ratio_stabilitas_tekuk,stabilitas_penampang_flenge,stabilitas_penampang_web)
             # )
             connector.execute(
-            'INSERT INTO CONSTRUCTION_STEEL(PROYEK_NAME,RATIO,ZX,H,B,RATIO_LENTUR,RATIO_GESER,RATIO_STABILITAS_TEKUK,STABILITAS_PENAMPANG) VALUES (?,?,?,?,?,?,?,?,?)', ("Proyek A",291, 2729, 20, 10, "OK", "OK","TIDAK OK","OK")
+            'INSERT INTO CONSTRUCTION_STEEL(PROYEK_NAME,RATIO,ZX,H,B,RATIO_LENTUR,RATIO_GESER,RATIO_STABILITAS_TEKUK,STABILITAS_PENAMPANG_FLENGE,STABILITAS_PENAMPANG_WEB) VALUES (?,?,?,?,?,?,?,?,?,?)', ("Proyek A",291, 2729, 20, 10, "OK", "OK","TIDAK OK","OK")
             )
             connector.commit()
             mb.showinfo('Record added', f"Record of {varProyekName} was successfully added")
@@ -109,30 +110,64 @@ def find_nearest(array, value):
 
 def getZx(FY,Øb):
     
-    Mmax = getMmax(beban_terpusat,panjang,beban_terbagi_rata)
+    # Mmax = getMmax(beban_terpusat,panjang,beban_terbagi_rata)
+    Mmax = getMmax(200,100,25)
+
     Zxperlu = Mmax / (FY * Øb )
-    # search Zx from table
-    # Opening JSON file
-    tableIWF = open('iwf.json')
-    data = json.load(tableIWF)
     array = []
     for i in data['IWF']:
         res = i['Zx']
         array.append(res)
         
-    tableIWF.close()
     getFixZx = find_nearest(array,Zxperlu)
     return getFixZx
+
+def getAllDataIWFByZx():
+
+    getFixZx = getZx(200,100)
+    print(getFixZx)
+    jsonObject = {}
+    for i in data['IWF']:
+        if getFixZx == i['Zx']:
+            H = i['H']
+            B = i['B']
+            Tf = i['Tf']
+            Tw = i['Tw']
+            A = i['A']
+            Iy = i['Iy']
+            Ry = i['Zy']
+            # set data to json
+            print(H) 
+
+# def analyzeRatioKapasitasLentur():
+#     Sx = (B*Tf)*(H*Tf)+Tw*(1/2*H-Tf)*(1/2*H-Tf)
+#     Mu = Mmax
+#     Mn = Zx*Fy
+#     Rasio1 = Mmax/(Øb*Mn)
+#     if Rasio1 < 1:
+#         return "OK"
+#     elif Rasio1 > 1:
+#         return "Tidak OK" 
+
+def analyzeRatioKapasitasGeser():
+    return "Hasil perhitungan Ratio Geser"
+
+def analyzeRatioStabilitasPenampangFlenge():
+    return "Hasil perhitungan Stabilitas Penampang Flenge"
+
+def analyzeRatioStabilitasPenampangWeb():
+    return "Hasil perhitungan Stabilitas Penampang Flenge"
+
+def analyzeRatioStabilitasTekuk():
+    return "Hasil perhitungan Stabilitas Penampang Flenge"
 
 
 
 # Initializing the GUI window
 main = Tk()
 main.title('My Python Project')
-main.geometry('1280x720')
-main.resizable(False, True)
-
-
+main.geometry('1920x1280')
+# main.resizable(False, True)
 
 # Creating the background and foreground color variables
 lf_bg = 'Gray35' # bg color for the left_frame
@@ -161,7 +196,9 @@ B = DoubleVar()
 ratio_lentur = StringVar()
 ratio_geser = StringVar()
 ratio_stabilitas_tekuk = StringVar()
-stabilitas_penampang = StringVar()
+stabilitas_penampang_flenge = StringVar()
+stabilitas_penampang_web = StringVar()
+
 
 
 
@@ -176,7 +213,7 @@ center_frame = Frame(main, bg=primaryBg)
 center_frame.place(relx=0.18, y=25, relheight=1, relwidth=0.25)
 
 right_frame = Frame(main, bg=primaryBg)
-right_frame.place(relx=0.35, y=25, relheight=1, relwidth=0.65)
+right_frame.place(relx=0.35, y=25, relheight=1, relwidth=0.75)
 
 # Placing components in the left frame
 Label(left_frame, text="Nama Proyek", font=labelfont, bg=lf_bg,fg=white).place(relx=0.07, rely=0.01)
@@ -189,10 +226,10 @@ Label(left_frame, text="Modulus Elastisitas(E)", font=labelfont, bg=lf_bg,fg=whi
 Entry(left_frame, width=25, textvariable=modulus_elastisitas, font=entryfont).place(x=20, rely=0.25)
 
 Label(left_frame, text="Kekuatan Minimum baja(FY)", font=labelfont, bg=lf_bg,fg=white).place(relx=0.07, rely=0.30)
-OptionMenu(left_frame, kekuatan_min_baja, 410, 290, 250 ,240 , 210).place(x=20, rely=0.35, relwidth=0.65)
+OptionMenu(left_frame, kekuatan_min_baja, 410, 290, 250 ,240 , 210).place(x=20, rely=0.35, relwidth=0.60)
 
 Label(left_frame, text="Kekuatan Maksimum baja(FU) ", font=labelfont, bg=lf_bg,fg=white).place(relx=0.07, rely=0.40)
-OptionMenu(left_frame, kekuatan_max_baja, 550, 500,410,370, 340).place(x=20, rely=0.45, relwidth=0.65)
+OptionMenu(left_frame, kekuatan_max_baja, 550, 500,410,370, 340).place(x=20, rely=0.45, relwidth=0.60)
 
 Label(left_frame, text="Ketinggian Gedung(H)", font=labelfont, bg=lf_bg,fg=white).place(relx=0.07, rely=0.50)
 Entry(left_frame, width=25, textvariable=ketinggian_gedung, font=entryfont).place(x=20, rely=0.55)
@@ -222,14 +259,14 @@ Button(left_frame, text='Submit and Analyze', font=labelfont, command=add_record
 
 # Placing components in the center frame
 Button(left_frame, text='Delete Record', font=labelfont, fg="#c62828", command=remove_record, width=16).place(relx=0.07, rely=0.75)
-Button(center_frame, text='Reset Fields', font=labelfont, command=reset_fields, width=16).place(relx=0.07, rely=0.65)
-Button(center_frame, text='Delete All Data', font=labelfont,fg="#c62828", command=reset_form, width=16).place(relx=0.07, rely=0.75)
+Button(center_frame, text='Reset Fields', font=labelfont, command=reset_fields, width=16).place(relx=0.05, rely=0.65)
+Button(center_frame, text='Delete All Data', font=labelfont,fg="#c62828", command=getAllDataIWFByZx, width=16).place(relx=0.05, rely=0.75)
 
 # Placing components in the right frame
 Label(right_frame, text='Riwayat Hasil Analisa', font=headlabelfont, bg='Grey35', fg=white).pack(side=TOP, fill=X)
 
 tree = ttk.Treeview(right_frame, height=100, selectmode=BROWSE,
-                    columns=('STEEL_ID','project_name', "ratio", "Zx", "H", "B", "r_lentur", "r_geser","r_stabilitas_tekuk","r_stabilitas_penampang"))
+                    columns=('STEEL_ID','project_name', "ratio", "Zx", "H", "B", "r_lentur", "r_geser","r_stabilitas_tekuk","r_stabilitas_penampang_flenge","r_stabilitas_penampang_web"))
 
 X_scroller = Scrollbar(tree, orient=HORIZONTAL, command=tree.xview)
 Y_scroller = Scrollbar(tree, orient=VERTICAL, command=tree.yview)
@@ -248,21 +285,25 @@ tree.heading('B', text='B', anchor=CENTER)
 tree.heading('r_lentur', text='Ratio Lentur', anchor=CENTER)
 tree.heading('r_geser', text='Ratio Geser', anchor=CENTER)
 tree.heading('r_stabilitas_tekuk', text='Ratio Stabilitas Tekuk', anchor=CENTER)
-tree.heading('r_stabilitas_penampang', text='Stabilitas Penampang ', anchor=CENTER)
+tree.heading('r_stabilitas_penampang_flenge', text='Stabilitas Penampang Flenge', anchor=CENTER)
+tree.heading('r_stabilitas_penampang_web', text='Stabilitas Penampang Web', anchor=CENTER)
+
 
 
 
 tree.column('#0', width=0, stretch=NO,anchor=CENTER)
 tree.column('#1', width=20, stretch=NO,anchor=CENTER)
-tree.column('#2', width=150, stretch=NO,anchor=CENTER)
-tree.column('#3', width=60, stretch=NO,anchor=CENTER)
-tree.column('#4', width=60, stretch=NO,anchor=CENTER)
-tree.column('#5', width=60, stretch=NO,anchor=CENTER)
-tree.column('#6', width=55, stretch=NO,anchor=CENTER)
+tree.column('#2', width=120, stretch=NO,anchor=CENTER)
+tree.column('#3', width=50, stretch=NO,anchor=CENTER)
+tree.column('#4', width=50, stretch=NO,anchor=CENTER)
+tree.column('#5', width=40, stretch=NO,anchor=CENTER)
+tree.column('#6', width=50, stretch=NO,anchor=CENTER)
 tree.column('#7', width=75, stretch=NO,anchor=CENTER)
 tree.column('#8', width=80, stretch=NO,anchor=CENTER)
-tree.column('#9', width=140, stretch=NO,anchor=CENTER)
-tree.column('#10', width=120, stretch=NO,anchor=CENTER)
+tree.column('#9', width=130, stretch=NO,anchor=CENTER)
+tree.column('#10', width=160, stretch=NO,anchor=CENTER)
+tree.column('#11', width=160, stretch=NO,anchor=CENTER)
+
 
 tree.place(y=30, relwidth=1, relheight=0.9, relx=0)
 
