@@ -3,8 +3,9 @@ import tkinter.messagebox as mb
 from tkinter import ttk
 import sqlite3
 import json
-import numpy as np
 import math
+import numpy as np
+
 
 
 
@@ -22,7 +23,7 @@ connector = sqlite3.connect('ConstructionSteel.db')
 cursor = connector.cursor()
 
 connector.execute(
-"CREATE TABLE IF NOT EXISTS CONSTRUCTION_STEEL (STEEL_ID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, PROYEK_NAME TEXT, RATIO FLOAT, ZX FLOAT, H FLOAT, B FLOAT, RATIO_LENTUR TEXT, RATIO_GESER TEXT, RATIO_STABILITAS_TEKUK TEXT, STABILITAS_PENAMPANG_FLENGE TEXT,STABILITAS_PENAMPANG_WEB TEXT )"
+"CREATE TABLE IF NOT EXISTS CONSTRUCTION_STEEL (STEEL_ID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, PROYEK_NAME TEXT, RATIO FLOAT, ZX FLOAT, h FLOAT, B FLOAT, RATIO_LENTUR TEXT, RATIO_GESER TEXT, RATIO_STABILITAS_TEKUK TEXT, STABILITAS_PENAMPANG_FLENGE TEXT,STABILITAS_PENAMPANG_WEB TEXT )"
 )
 
 # Creating the functions
@@ -49,7 +50,7 @@ def display_records():
 
 def add_record():
     global proyek_name,panjang,modulus_elastisitas,kekuatan_min_baja,kekuatan_max_baja,ketinggian_gedung,beban_terbagi_rata,beban_terpusat,radius,koefisien_b,koefisien_geser,faktor_distribusi_vertikal
-    global Zx,H,B,ratio,ratio_lentur,ratio_geser,ratio_stabilitas_tekuk,stabilitas_penampang_flenge,stabilitas_penampang_web
+    global Zx,h,B,ratio,ratio_lentur,ratio_geser,ratio_stabilitas_tekuk,stabilitas_penampang_flenge,stabilitas_penampang_web
 
     varProyekName = proyek_name.get()
     varPanjang = panjang.get()
@@ -72,7 +73,7 @@ def add_record():
             # 'INSERT INTO CONSTRUCTION_STEEL(PROYEK_NAME,RATIO,ZX,H,B,RATIO_LENTUR,RATIO_GESER,RATIO_STABILITAS_TEKUK,STABILITAS_PENAMPANG_FLENGE,STABILITAS_PENAMPANG_WEB) VALUES (?,?,?,?,?,?,?,?,?,?)', (varProyekName,ratio, Zx, H, B, ratio_lentur, ratio_geser,ratio_stabilitas_tekuk,stabilitas_penampang_flenge,stabilitas_penampang_web)
             # )
             connector.execute(
-            'INSERT INTO CONSTRUCTION_STEEL(PROYEK_NAME,RATIO,ZX,H,B,RATIO_LENTUR,RATIO_GESER,RATIO_STABILITAS_TEKUK,STABILITAS_PENAMPANG_FLENGE,STABILITAS_PENAMPANG_WEB) VALUES (?,?,?,?,?,?,?,?,?,?)', ("Proyek A",291, 2729, 20, 10, "OK", "OK","TIDAK OK","OK")
+            'INSERT INTO CONSTRUCTION_STEEL(PROYEK_NAME,RATIO,ZX,h,B,RATIO_LENTUR,RATIO_GESER,RATIO_STABILITAS_TEKUK,STABILITAS_PENAMPANG_FLENGE,STABILITAS_PENAMPANG_WEB) VALUES (?,?,?,?,?,?,?,?,?,?)', ("Proyek A",291, 2729, 20, 10, "OK", "OK","TIDAK OK","OK")
             )
             connector.commit()
             mb.showinfo('Record added', f"Record of {varProyekName} was successfully added")
@@ -111,9 +112,11 @@ def find_nearest(array, value):
 def getZx(FY,Øb):
     
     # Mmax = getMmax(beban_terpusat,panjang,beban_terbagi_rata)
-    Mmax = getMmax(200,100,25)
+    Mmax = getMmax(1000,200,500)
 
     Zxperlu = Mmax / (FY * Øb )
+    print("ZxpERLU = "+ str(Zxperlu))
+
     array = []
     for i in data['IWF']:
         res = i['Zx']
@@ -124,39 +127,79 @@ def getZx(FY,Øb):
 
 def getAllDataIWFByZx():
 
-    getFixZx = getZx(200,100)
-    print(getFixZx)
-    jsonObject = {}
-    for i in data['IWF']:
-        if getFixZx == i['Zx']:
-            H = i['H']
-            B = i['B']
-            Tf = i['Tf']
-            Tw = i['Tw']
-            A = i['A']
-            Iy = i['Iy']
-            Ry = i['Zy']
-            # set data to json
-            print(H) 
+    getFixZx = getZx(30,10)
+    print("ZxFromTable = " + str(getFixZx))
 
-# def analyzeRatioKapasitasLentur():
-#     Sx = (B*Tf)*(H*Tf)+Tw*(1/2*H-Tf)*(1/2*H-Tf)
-#     Mu = Mmax
-#     Mn = Zx*Fy
-#     Rasio1 = Mmax/(Øb*Mn)
-#     if Rasio1 < 1:
-#         return "OK"
-#     elif Rasio1 > 1:
-#         return "Tidak OK" 
+    array = []
+    for i in data['IWF']:
+        res = i['Zx']
+        array.append(res)
+        if res == getFixZx :
+            print(i['Zx'])
+            jsonObject = {
+            "H":i['H'],
+            "B":i['B'],
+            "Tf":i['Tf'],
+            "Tw":i['Tw'],
+            "A":i['A'],
+            "R":i['r'],
+            "Ix":i['Ix'],
+            "Iy":i['Iy'],
+            "Zy":i['Zy'],
+            "Zx":i['Zx']
+        }       
+    return jsonObject
+
+
+def analyzeRatioKapasitasLentur():
+    jsonLoads = getAllDataIWFByZx()
+    # jsonLoads = json.load(getDataIWF)
+    print("Get IWF = " + str(jsonLoads))
+    Sx = (jsonLoads["B"] * jsonLoads["Tf"]) * (jsonLoads["H"] * jsonLoads["Tf"]) + jsonLoads["Tw"] * (0.5 * jsonLoads["H"] - jsonLoads["Tf"]) * (0.5 * jsonLoads["H"] - jsonLoads["Tf"])
+    # Mmax = getMmax(beban_terpusat,panjang,beban_terbagi_rata)
+    Mmax = getMmax(1000,200,500)
+    # Sx*Fy
+    Mn = Sx * kekuatan_min_baja
+    # Mmax/(Øb*Mn)
+    Rasio = Mmax / (koefisien_b * Mn)
+
+    if Rasio < 1:
+        print("Result Kapasitas Lentur OK")
+        return "OK"
+    elif Rasio > 1:
+        print("Result Kapasitas Lentur Tidak OK")
+        return "Tidak OK" 
 
 def analyzeRatioKapasitasGeser():
-    return "Hasil perhitungan Ratio Geser"
+    jsonLoads = getAllDataIWFByZx()
+
+    Vu = radius
+    Vn = 0.6 * kekuatan_min_baja * faktor_distribusi_vertikal * (jsonLoads["H"] - 2 * jsonLoads["Tf"]) * jsonLoads["Tw"]
+    Rasio = Vu/(koefisien_b * Vn)
+    if Rasio < 1:
+        print("Result Kapasitas Lentur OK")
+        return "OK"
+    elif Rasio > 1:
+        print("Result Kapasitas Lentur Tidak OK")
+        return "Tidak OK"
 
 def analyzeRatioStabilitasPenampangFlenge():
-    return "Hasil perhitungan Stabilitas Penampang Flenge"
+    jsonLoads = getAllDataIWFByZx()
+    λpf = 0,38*math.sqrt(modulus_elastisitas/kekuatan_min_baja)
+    λf = Bf/(2*jsonLoads["Tf"])
+    if λf < λpf:
+        return "Kompak"
+    elif λf > λpf:
+        return "Tidak Kompak"
 
 def analyzeRatioStabilitasPenampangWeb():
-    return "Hasil perhitungan Stabilitas Penampang Flenge"
+    jsonLoads = getAllDataIWFByZx()
+    λpw = 3,78 * math.sqrt(modulus_elastisitas/kekuatan_min_baja)
+    λw = (jsonLoads["H"]-2 * jsonLoads["Tf"]) / jsonLoads["Tw"]
+    if λw < λpw:
+        return "Kompak"
+    elif λw > λpw:
+        return "Tidak Kompak"
 
 def analyzeRatioStabilitasTekuk():
     return "Hasil perhitungan Stabilitas Penampang Flenge"
@@ -191,7 +234,7 @@ faktor_distribusi_vertikal = DoubleVar()
 
 Zx = DoubleVar()
 ratio = DoubleVar()
-H = DoubleVar()
+h = DoubleVar()
 B = DoubleVar()
 ratio_lentur = StringVar()
 ratio_geser = StringVar()
@@ -260,7 +303,7 @@ Button(left_frame, text='Submit and Analyze', font=labelfont, command=add_record
 # Placing components in the center frame
 Button(left_frame, text='Delete Record', font=labelfont, fg="#c62828", command=remove_record, width=16).place(relx=0.07, rely=0.75)
 Button(center_frame, text='Reset Fields', font=labelfont, command=reset_fields, width=16).place(relx=0.05, rely=0.65)
-Button(center_frame, text='Delete All Data', font=labelfont,fg="#c62828", command=getAllDataIWFByZx, width=16).place(relx=0.05, rely=0.75)
+Button(center_frame, text='Delete All Data', font=labelfont,fg="#c62828", command=analyzeRatioKapasitasGeser, width=16).place(relx=0.05, rely=0.75)
 
 # Placing components in the right frame
 Label(right_frame, text='Riwayat Hasil Analisa', font=headlabelfont, bg='Grey35', fg=white).pack(side=TOP, fill=X)
