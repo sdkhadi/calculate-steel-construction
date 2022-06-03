@@ -20,7 +20,7 @@ connector = sqlite3.connect('ConstructionSteel.db')
 cursor = connector.cursor()
 
 connector.execute(
-"CREATE TABLE IF NOT EXISTS CONSTRUCTION_STEEL (STEEL_ID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, PROYEK_NAME TEXT, RATIO FLOAT, ZX FLOAT, h FLOAT, B FLOAT, RATIO_LENTUR TEXT, RATIO_GESER TEXT, RATIO_STABILITAS_TEKUK TEXT, STABILITAS_PENAMPANG_FLENGE TEXT,STABILITAS_PENAMPANG_WEB TEXT )"
+"CREATE TABLE IF NOT EXISTS CONSTRUCTION_STEEL (STEEL_ID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, PROYEK_NAME TEXT, ZX DOUBLE, H DOUBLE, B DOUBLE, RATIO_LENTUR TEXT, RATIO_GESER TEXT, STABILITAS_PENAMPANG_FLENGE TEXT,STABILITAS_PENAMPANG_WEB TEXT, RATIO_STABILITAS_TEKUK TEXT )"
 )
 
 # Creating the functions
@@ -45,40 +45,6 @@ def display_records():
     for records in data:
         tree.insert('', END, values=records)
 
-def add_record():
-    global proyek_name,panjang,modulus_elastisitas,kekuatan_min_baja,kekuatan_max_baja,ketinggian_gedung,beban_terbagi_rata,beban_terpusat,radius,koefisien_b,koefisien_geser,faktor_distribusi_vertikal
-    global Zx,h,B,ratio,ratio_lentur,ratio_geser,ratio_stabilitas_tekuk,stabilitas_penampang_flenge,stabilitas_penampang_web
-
-    varProyekName = proyek_name.get()
-    varPanjang = panjang.get()
-    varModulusElastisitas = modulus_elastisitas.get()
-    varKekuatanMinBaja = kekuatan_min_baja.get()
-    varKekuatanMaxBaja = kekuatan_max_baja.get()
-    varKetinggianGedung = ketinggian_gedung.get()
-    varBebanTerbagiRata = beban_terbagi_rata.get()
-    varBebanTerpusat = beban_terpusat.get()
-    varRadius = radius.get()
-    varKoefisienB = koefisien_b.get()
-    varKoefisienGeser = koefisien_geser.get()
-    varDistribusiVertikal = faktor_distribusi_vertikal.get()
-
-    if not varProyekName or not varPanjang or not varModulusElastisitas or not varKekuatanMinBaja or not varKekuatanMaxBaja or not varKetinggianGedung or not varBebanTerbagiRata or not varBebanTerpusat or not varRadius or not varKoefisienB or not varKoefisienGeser or not varDistribusiVertikal:
-        mb.showerror('Error!', "Semua Field Wajib Diisi")
-    else:
-        try:
-            # connector.execute(
-            # 'INSERT INTO CONSTRUCTION_STEEL(PROYEK_NAME,RATIO,ZX,H,B,RATIO_LENTUR,RATIO_GESER,RATIO_STABILITAS_TEKUK,STABILITAS_PENAMPANG_FLENGE,STABILITAS_PENAMPANG_WEB) VALUES (?,?,?,?,?,?,?,?,?,?)', (varProyekName,ratio, Zx, H, B, ratio_lentur, ratio_geser,ratio_stabilitas_tekuk,stabilitas_penampang_flenge,stabilitas_penampang_web)
-            # )
-            connector.execute(
-            'INSERT INTO CONSTRUCTION_STEEL(PROYEK_NAME,RATIO,ZX,h,B,RATIO_LENTUR,RATIO_GESER,RATIO_STABILITAS_TEKUK,STABILITAS_PENAMPANG_FLENGE,STABILITAS_PENAMPANG_WEB) VALUES (?,?,?,?,?,?,?,?,?,?)', ("Proyek A",291, 2729, 20, 10, "OK", "OK","TIDAK OK","OK")
-            )
-            connector.commit()
-            mb.showinfo('Record added', f"Record of {varProyekName} was successfully added")
-            reset_fields()
-            display_records()
-        except:
-            mb.showerror('Wrong type', 'The type of the values entered is not accurate. Pls note that the contact field can only contain numbers')
-
 
 def remove_record():
     if not tree.selection():
@@ -97,7 +63,11 @@ def remove_record():
 
         display_records()
 
-def getMmax(pu,L,qu):
+def getMmax():
+    global beban_terpusat,panjang, beban_terbagi_rata
+    pu = float(beban_terpusat.get())
+    L = float(panjang.get())
+    qu = float(beban_terbagi_rata.get())
     Mmax =  (0.25*pu*L)+(0.125*qu*pow(L,2))
     return Mmax
 
@@ -106,12 +76,13 @@ def find_nearest(array, value):
     idx = (np.abs(array - value)).argmin()
     return array[idx]
 
-def getZx(FY,Øb):
-    
-    # Mmax = getMmax(beban_terpusat,panjang,beban_terbagi_rata)
-    Mmax = getMmax(1000,200,500)
+def getZx():
+    global kekuatan_min_baja,koefisien_b
+    Fy = float(kekuatan_min_baja.get())
+    Øb = float(koefisien_b.get())
+    Mmax = getMmax()
 
-    Zxperlu = Mmax / (FY * Øb )
+    Zxperlu = Mmax / (Fy * Øb )
     print("ZxpERLU = "+ str(Zxperlu))
 
     array = []
@@ -124,7 +95,7 @@ def getZx(FY,Øb):
 
 def getAllDataIWFByZx():
 
-    getFixZx = getZx(30,10)
+    getFixZx = getZx()
     print("ZxFromTable = " + str(getFixZx))
 
     array = []
@@ -132,7 +103,6 @@ def getAllDataIWFByZx():
         res = i['Zx']
         array.append(res)
         if res == getFixZx :
-            print(i['Zx'])
             jsonObject = {
             "H":i['H'],
             "B":i['B'],
@@ -149,16 +119,17 @@ def getAllDataIWFByZx():
 
 
 def analyzeRatioKapasitasLentur():
+    global kekuatan_min_baja,koefisien_b
+    Øb = float(koefisien_b.get())
+    Fy= float(kekuatan_min_baja.get())
     jsonLoads = getAllDataIWFByZx()
     # jsonLoads = json.load(getDataIWF)
     print("Get IWF = " + str(jsonLoads))
     Sx = (jsonLoads["B"] * jsonLoads["Tf"]) * (jsonLoads["H"] * jsonLoads["Tf"]) + jsonLoads["Tw"] * (0.5 * jsonLoads["H"] - jsonLoads["Tf"]) * (0.5 * jsonLoads["H"] - jsonLoads["Tf"])
     # Mmax = getMmax(beban_terpusat,panjang,beban_terbagi_rata)
-    Mmax = getMmax(1000,200,500)
-    # Sx*Fy
-    Mn = Sx * kekuatan_min_baja
-    # Mmax/(Øb*Mn)
-    Rasio = Mmax / (koefisien_b * Mn)
+    Mmax = getMmax()
+    Mn = Sx * Fy
+    Rasio = Mmax / (Øb * Mn)
 
     if Rasio < 1:
         print("Result Kapasitas Lentur OK")
@@ -168,60 +139,113 @@ def analyzeRatioKapasitasLentur():
         return "Tidak OK" 
 
 def analyzeRatioKapasitasGeser():
+    global radius,koefisien_b,kekuatan_min_baja, faktor_distribusi_vertikal
+    r = float(radius.get())
+    Fy = float(kekuatan_min_baja.get())
+    Cv = float(faktor_distribusi_vertikal.get())
+    Øb = float(koefisien_b.get())
     jsonLoads = getAllDataIWFByZx()
 
-    Vu = radius
-    Vn = 0.6 * kekuatan_min_baja * faktor_distribusi_vertikal * (jsonLoads["H"] - 2 * jsonLoads["Tf"]) * jsonLoads["Tw"]
-    Rasio = Vu/(koefisien_b * Vn)
+    Vu = r
+    Vn = 0.6 * Fy * Cv * (jsonLoads["H"] - 2 * jsonLoads["Tf"]) * jsonLoads["Tw"]
+    Rasio = Vu/(Øb * Vn)
     if Rasio < 1:
-        print("Result Kapasitas Lentur OK")
+        print("Result Kapasitas Geser OK")
         return "OK"
     elif Rasio > 1:
-        print("Result Kapasitas Lentur Tidak OK")
+        print("Result Kapasitas Geser Tidak OK")
         return "Tidak OK"
 
 def analyzeRatioStabilitasPenampangFlenge():
+    global modulus_elastisitas,kekuatan_min_baja
+    e = float(modulus_elastisitas.get())
+    Fy = float(kekuatan_min_baja.get())
     jsonLoads = getAllDataIWFByZx()
-    λpf = 0,38*math.sqrt(modulus_elastisitas/kekuatan_min_baja)
+    λpf = 0.38*math.sqrt(e/Fy)
     λf = jsonLoads["B"]/(2*jsonLoads["Tf"])
     if λf < λpf:
+        print("Flenge Kompak")
         return "Kompak"
     elif λf > λpf:
+        print("Flenge tidak Kompak")
         return "Tidak Kompak"
 
 def analyzeRatioStabilitasPenampangWeb():
+    global modulus_elastisitas,kekuatan_min_baja
+    e = float(modulus_elastisitas.get())
+    Fy = float(kekuatan_min_baja.get())
     jsonLoads = getAllDataIWFByZx()
-    λpw = 3,78 * math.sqrt(modulus_elastisitas/kekuatan_min_baja)
+    λpw = 3.78 * math.sqrt(e/Fy)
     λw = (jsonLoads["H"]-2 * jsonLoads["Tf"]) / jsonLoads["Tw"]
     if λw < λpw:
+        print("Web Kompak")
         return "Kompak"
     elif λw > λpw:
+        print("Web Tidak Kompak")
         return "Tidak Kompak"
 
 def analyzeRatioStabilitasTekuk():
+    global kekuatan_min_baja
+    Fy = float(kekuatan_min_baja.get())
+
     jsonLoads = getAllDataIWFByZx()
         # jsonLoads = json.load(getDataIWF)
     print("Get IWF = " + str(jsonLoads))
     Sx = (jsonLoads["B"] * jsonLoads["Tf"]) * (jsonLoads["H"] * jsonLoads["Tf"]) + jsonLoads["Tw"] * (0.5 * jsonLoads["H"] - jsonLoads["Tf"]) * (0.5 * jsonLoads["H"] - jsonLoads["Tf"])
     # Mmax = getMmax(beban_terpusat,panjang,beban_terbagi_rata)
-    Mmax = getMmax(1000,200,500)
+    Mmax = getMmax()
     # Sx*Fy
-    Mn = Sx * kekuatan_min_baja
+    Mn = Sx * Fy
     ØMn = 0.9 * Mn
     if ØMn > Mmax:
+        print("Result Tekuk OK")
         return "OK"
     elif ØMn < Mmax:
+        print("Result Tekuk Tidak OK")
         return "Tidak OK"
 
-def resultAllAnalyze():
-    kapasitasLentur = analyzeRatioKapasitasLentur()
-    kapasitasGeser = analyzeRatioKapasitasGeser()
-    stabilitasPenampangFlenge = analyzeRatioStabilitasPenampangFlenge()
-    stabilitasPenampangWeb = analyzeRatioStabilitasPenampangWeb()
-    stabilitasTekuk = analyzeRatioStabilitasTekuk()
-    return "input to database"
+def add_record():
+    global proyek_name,panjang,modulus_elastisitas,kekuatan_min_baja,kekuatan_max_baja,ketinggian_gedung,beban_terbagi_rata,beban_terpusat,radius,koefisien_b,koefisien_geser,faktor_distribusi_vertikal
 
+    varProyekName = proyek_name.get()
+    varPanjang = panjang.get()
+    varModulusElastisitas = float(modulus_elastisitas.get())
+    varKekuatanMinBaja = float(kekuatan_min_baja.get())
+    varKekuatanMaxBaja = float(kekuatan_max_baja.get())
+    varKetinggianGedung = float(ketinggian_gedung.get())
+    varBebanTerbagiRata = float(beban_terbagi_rata.get())
+    varBebanTerpusat = float(beban_terpusat.get())
+    varRadius = float(radius.get())
+    varKoefisienB = float(koefisien_b.get())
+    varKoefisienGeser = float(koefisien_geser.get())
+    varDistribusiVertikal = float(faktor_distribusi_vertikal.get())
 
+    if not varProyekName or not varPanjang or not varModulusElastisitas or not varKekuatanMinBaja or not varKekuatanMaxBaja or not varKetinggianGedung or not varBebanTerbagiRata or not varBebanTerpusat or not varRadius or not varKoefisienB or not varKoefisienGeser or not varDistribusiVertikal:
+        mb.showerror('Error!', "Semua Field Wajib Diisi")
+    else:
+        try:
+            jsonLoads = getAllDataIWFByZx()
+            kapasitasLentur = analyzeRatioKapasitasLentur()
+            print("AAAAA = " + kapasitasLentur)
+            kapasitasGeser = analyzeRatioKapasitasGeser()
+            print("BBBBB = " + kapasitasGeser)
+            stabilitasPenampangFlenge = analyzeRatioStabilitasPenampangFlenge()
+            print("CCCC= "+stabilitasPenampangFlenge)
+            stabilitasPenampangWeb = analyzeRatioStabilitasPenampangWeb()
+            print("DDDDD = " +stabilitasPenampangWeb)
+
+            stabilitasTekuk = analyzeRatioStabilitasTekuk()
+
+            print("EEEEE = " + stabilitasTekuk)
+            connector.execute(
+            'INSERT INTO CONSTRUCTION_STEEL(PROYEK_NAME,ZX,H,B,RATIO_LENTUR,RATIO_GESER,STABILITAS_PENAMPANG_FLENGE,STABILITAS_PENAMPANG_WEB,RATIO_STABILITAS_TEKUK) VALUES (?,?,?,?,?,?,?,?,?)', (varProyekName, jsonLoads['Zx'], jsonLoads["H"], jsonLoads["H"], kapasitasLentur, kapasitasGeser,stabilitasPenampangFlenge,stabilitasPenampangWeb,stabilitasTekuk)
+            )
+            connector.commit()
+            mb.showinfo('Record added', f"Record of {varProyekName} was successfully added")
+            reset_fields()
+            display_records()
+        except:
+            mb.showerror('Wrong type', 'The type of the values entered is not accurate. Pls note that the contact field can only contain numbers')
 
 # Initializing the GUI window
 main = Tk()
@@ -235,30 +259,21 @@ cf_bg = 'Gray35' # bg color for the center_frame
 primaryBg = "Gray35"
 white ="#ffffff"
 
+
+
 # Creating the StringVar or IntVar variables
 proyek_name = StringVar()
-panjang = DoubleVar()
-modulus_elastisitas = DoubleVar()
-kekuatan_min_baja = DoubleVar()
-kekuatan_max_baja = DoubleVar()
-ketinggian_gedung = DoubleVar()
-beban_terbagi_rata = DoubleVar()
-beban_terpusat = DoubleVar()
-radius =DoubleVar()
-koefisien_b =DoubleVar()
-koefisien_geser = DoubleVar()
-faktor_distribusi_vertikal = DoubleVar()
-
-Zx = DoubleVar()
-ratio = DoubleVar()
-h = DoubleVar()
-B = DoubleVar()
-ratio_lentur = StringVar()
-ratio_geser = StringVar()
-ratio_stabilitas_tekuk = StringVar()
-stabilitas_penampang_flenge = StringVar()
-stabilitas_penampang_web = StringVar()
-
+panjang = IntVar()
+modulus_elastisitas = IntVar()
+kekuatan_min_baja = IntVar()
+kekuatan_max_baja = IntVar()
+ketinggian_gedung = IntVar()
+beban_terbagi_rata = IntVar()
+beban_terpusat = IntVar()
+radius =IntVar()
+koefisien_b =IntVar()
+koefisien_geser = IntVar()
+faktor_distribusi_vertikal = IntVar()
 
 
 
@@ -320,13 +335,13 @@ Button(left_frame, text='Submit and Analyze', font=labelfont, command=add_record
 # Placing components in the center frame
 Button(left_frame, text='Delete Record', font=labelfont, fg="#c62828", command=remove_record, width=16).place(relx=0.07, rely=0.75)
 Button(center_frame, text='Reset Fields', font=labelfont, command=reset_fields, width=16).place(relx=0.05, rely=0.65)
-Button(center_frame, text='Delete All Data', font=labelfont,fg="#c62828", command=analyzeRatioKapasitasGeser, width=16).place(relx=0.05, rely=0.75)
+Button(center_frame, text='Delete All Data', font=labelfont,fg="#c62828", command=reset_form, width=16).place(relx=0.05, rely=0.75)
 
 # Placing components in the right frame
 Label(right_frame, text='Riwayat Hasil Analisa', font=headlabelfont, bg='Grey35', fg=white).pack(side=TOP, fill=X)
 
 tree = ttk.Treeview(right_frame, height=100, selectmode=BROWSE,
-                    columns=('STEEL_ID','project_name', "ratio", "Zx", "H", "B", "r_lentur", "r_geser","r_stabilitas_tekuk","r_stabilitas_penampang_flenge","r_stabilitas_penampang_web"))
+                    columns=('STEEL_ID','project_name', "Zx", "H", "B", "r_lentur", "r_geser","r_stabilitas_tekuk","r_stabilitas_penampang_flenge","r_stabilitas_penampang_web"))
 
 X_scroller = Scrollbar(tree, orient=HORIZONTAL, command=tree.xview)
 Y_scroller = Scrollbar(tree, orient=VERTICAL, command=tree.yview)
@@ -338,7 +353,6 @@ tree.config(yscrollcommand=Y_scroller.set, xscrollcommand=X_scroller.set)
 tree.heading('STEEL_ID', text='ID', anchor=CENTER)
 
 tree.heading('project_name', text='Nama Proyek', anchor=CENTER)
-tree.heading('ratio', text='Ratio', anchor=CENTER)
 tree.heading('Zx', text='Zx', anchor=CENTER)
 tree.heading('H', text='H', anchor=CENTER)
 tree.heading('B', text='B', anchor=CENTER)
@@ -354,15 +368,14 @@ tree.heading('r_stabilitas_penampang_web', text='Stabilitas Penampang Web', anch
 tree.column('#0', width=0, stretch=NO,anchor=CENTER)
 tree.column('#1', width=20, stretch=NO,anchor=CENTER)
 tree.column('#2', width=120, stretch=NO,anchor=CENTER)
-tree.column('#3', width=50, stretch=NO,anchor=CENTER)
-tree.column('#4', width=50, stretch=NO,anchor=CENTER)
-tree.column('#5', width=40, stretch=NO,anchor=CENTER)
-tree.column('#6', width=50, stretch=NO,anchor=CENTER)
-tree.column('#7', width=75, stretch=NO,anchor=CENTER)
-tree.column('#8', width=80, stretch=NO,anchor=CENTER)
-tree.column('#9', width=130, stretch=NO,anchor=CENTER)
+tree.column('#3', width=70, stretch=NO,anchor=CENTER)
+tree.column('#4', width=60, stretch=NO,anchor=CENTER)
+tree.column('#5', width=60, stretch=NO,anchor=CENTER)
+tree.column('#6', width=75, stretch=NO,anchor=CENTER)
+tree.column('#7', width=80, stretch=NO,anchor=CENTER)
+tree.column('#8', width=130, stretch=NO,anchor=CENTER)
+tree.column('#9', width=160, stretch=NO,anchor=CENTER)
 tree.column('#10', width=160, stretch=NO,anchor=CENTER)
-tree.column('#11', width=160, stretch=NO,anchor=CENTER)
 
 
 tree.place(y=30, relwidth=1, relheight=0.9, relx=0)
