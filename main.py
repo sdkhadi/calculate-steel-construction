@@ -6,9 +6,6 @@ import json
 import math
 import numpy as np
 
-
-
-
 tableIWF = open('iwf.json')
 data = json.load(tableIWF)
 
@@ -186,7 +183,7 @@ def analyzeRatioKapasitasGeser():
 def analyzeRatioStabilitasPenampangFlenge():
     jsonLoads = getAllDataIWFByZx()
     λpf = 0,38*math.sqrt(modulus_elastisitas/kekuatan_min_baja)
-    λf = Bf/(2*jsonLoads["Tf"])
+    λf = jsonLoads["B"]/(2*jsonLoads["Tf"])
     if λf < λpf:
         return "Kompak"
     elif λf > λpf:
@@ -202,7 +199,27 @@ def analyzeRatioStabilitasPenampangWeb():
         return "Tidak Kompak"
 
 def analyzeRatioStabilitasTekuk():
-    return "Hasil perhitungan Stabilitas Penampang Flenge"
+    jsonLoads = getAllDataIWFByZx()
+        # jsonLoads = json.load(getDataIWF)
+    print("Get IWF = " + str(jsonLoads))
+    Sx = (jsonLoads["B"] * jsonLoads["Tf"]) * (jsonLoads["H"] * jsonLoads["Tf"]) + jsonLoads["Tw"] * (0.5 * jsonLoads["H"] - jsonLoads["Tf"]) * (0.5 * jsonLoads["H"] - jsonLoads["Tf"])
+    # Mmax = getMmax(beban_terpusat,panjang,beban_terbagi_rata)
+    Mmax = getMmax(1000,200,500)
+    # Sx*Fy
+    Mn = Sx * kekuatan_min_baja
+    ØMn = 0.9 * Mn
+    if ØMn > Mmax:
+        return "OK"
+    elif ØMn < Mmax:
+        return "Tidak OK"
+
+def resultAllAnalyze():
+    kapasitasLentur = analyzeRatioKapasitasLentur()
+    kapasitasGeser = analyzeRatioKapasitasGeser()
+    stabilitasPenampangFlenge = analyzeRatioStabilitasPenampangFlenge()
+    stabilitasPenampangWeb = analyzeRatioStabilitasPenampangWeb()
+    stabilitasTekuk = analyzeRatioStabilitasTekuk()
+    return "input to database"
 
 
 

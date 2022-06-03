@@ -30,7 +30,7 @@ Sx = float(input("Lebar: "))
 print("CEK RASIO KAPASITAS LENTUR")
 Sx = (B*Tf)*(H*Tf)+Tw*(1/2*H-Tf)*(1/2*H-Tf)
 Mu = Mmax
-Mn = Zx*Fy
+Mn = Sx*Fy
 Rasio1 = Mmax/(Øb*Mn)
 if Rasio1 < 1:
     OK
@@ -49,7 +49,7 @@ elif Rasio2 > 1:
 print("Cek Stabilitas penampang") 
 print("flenge") 
 λpf = 0,38*sqrt(E/Fy)
-λf = Bf/(2*Tf)
+λf = B/(2*Tf)
 if λf < λpf:
     Kompak
 elif λf > λpf:
