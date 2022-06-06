@@ -2,10 +2,10 @@
 ### Dependencies
 ```sh
 $ Install python 3
-$ Instal TkInter
-$ Install json
-$ Install math
-$ Install numpy
+$ pip instal Tk
+$ pip install json
+$ pip install math
+$ pip install numpy
 ```
 ### Running
 ```sh
